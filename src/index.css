@@ -1,25 +1,5 @@
-body {
-  font-family: Arial, sans-serif;
-  padding: 20px;
-}
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-.dark {
-  background: #222;
-  color: #fff;
-}
-
-.task-item {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.task-item.completed span {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-button {
-  margin-left: 5px;
-  cursor: pointer;
-}
