@@ -7,12 +7,24 @@ import CalendarView from "./components/CalendarView";
 import ChecklistView from "./components/ChecklistView";
 
 const LS_TASKS = "todo.tasks.v1";
+const LS_CHECKLIST = "todo.checklist.v1";
 const LS_THEME = "theme";
 
 export default function App() {
+  // --- Main tasks ---
   const [tasks, setTasks] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_TASKS);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // --- Checklist tasks ---
+  const [checklistTasks, setChecklistTasks] = useState(() => {
+    try {
+      const raw = localStorage.getItem(LS_CHECKLIST);
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
@@ -28,17 +40,24 @@ export default function App() {
   const [sortBy, setSortBy] = useState("created-desc");
   const [currentView, setCurrentView] = useState("all"); // all | calendar | checklist
 
+  // --- Persist main tasks ---
   useEffect(() => {
     localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
   }, [tasks]);
 
+  // --- Persist checklist tasks ---
+  useEffect(() => {
+    localStorage.setItem(LS_CHECKLIST, JSON.stringify(checklistTasks));
+  }, [checklistTasks]);
+
+  // --- Persist theme ---
   useEffect(() => {
     if (dark) document.body.classList.add("dark");
     else document.body.classList.remove("dark");
     localStorage.setItem(LS_THEME, dark ? "dark" : "light");
   }, [dark]);
 
-  // --- Task operations ---
+  // --- Main Task operations ---
   const addTask = (payload) => {
     const newTask = {
       id: Date.now().toString(),
@@ -132,10 +151,8 @@ export default function App() {
 
         {/* --- Flex layout: Sidebar + Main content --- */}
         <div style={{ display: "flex", gap: "24px" }}>
-          {/* Sidebar */}
           <Sidebar currentView={currentView} setCurrentView={setCurrentView} dark={dark} />
 
-          {/* Main content: render based on selected view */}
           <div style={{ flex: 1 }}>
             {currentView === "all" && (
               <AllTasksView
@@ -172,12 +189,9 @@ export default function App() {
 
             {currentView === "checklist" && (
               <ChecklistView
-                tasks={tasks}
                 dark={dark}
-                editTask={editTask}
-                toggleSubtask={toggleSubtask}
-                addSubtask={addSubtask}
-                removeSubtask={removeSubtask}
+                checklistTasks={checklistTasks}
+                setChecklistTasks={setChecklistTasks}
               />
             )}
           </div>
