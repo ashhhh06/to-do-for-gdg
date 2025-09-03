@@ -1,18 +1,28 @@
 import React from "react";
 import TaskItem from "./TaskItem";
 
-export default function TaskList({ tasks, deleteTask, toggleComplete, editTask }) {
-  if (tasks.length === 0) return <p>No tasks yet!</p>;
+export default function TaskList({ tasks, editTask, deleteTask, toggleComplete, addSubtask, toggleSubtask, removeSubtask, dark }) {
+  if (!tasks.length) {
+    return (
+      <div style={{ padding: "24px", textAlign: "center", color: dark ? "#9ca3af" : "#6b7280" }}>
+        No tasks yet — add one above.
+      </div>
+    );
+  }
 
   return (
-    <ul className="task-list">
-      {tasks.map((t) => (
+    <ul style={{ marginTop: "16px", listStyle: "none", paddingLeft: 0 }}>
+      {tasks.map(task => (
         <TaskItem
-          key={t.id}
-          task={t}
+          key={task.id}
+          task={task}
+          editTask={editTask}
           deleteTask={deleteTask}
           toggleComplete={toggleComplete}
-          editTask={editTask}
+          addSubtask={addSubtask}
+          toggleSubtask={toggleSubtask}
+          removeSubtask={removeSubtask}
+          dark={dark}
         />
       ))}
     </ul>
