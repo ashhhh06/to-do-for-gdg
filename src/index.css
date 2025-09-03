@@ -1,5 +1,7 @@
-/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* small extra utilities */
+.task-scroll { max-height: 60vh; overflow: auto; }
+.kbd { padding:.1rem .35rem; border-radius:.35rem; border:1px solid rgba(0,0,0,.12); font-size: .75rem }

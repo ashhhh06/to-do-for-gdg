@@ -4,23 +4,22 @@ export default function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    if (dark) {
-      document.body.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.body.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [dark]);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") setDark(true);
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") setDark(true);
   }, []);
 
+  useEffect(() => {
+    if (dark) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+
   return (
-    <button onClick={() => setDark(!dark)}>
-      {dark ? "Light Mode" : "Dark Mode"}
+    <button
+      onClick={() => setDark(d => !d)}
+      className="px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition"
+    >
+      {dark ? "Light" : "Dark"}
     </button>
   );
 }

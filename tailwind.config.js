@@ -1,5 +1,9 @@
 export default {
-  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  darkMode: "class", // enable dark mode toggle
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {},
   },

@@ -1,66 +1,111 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import Header from "./components/Header";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
 import FilterBar from "./components/FilterBar";
-import ThemeToggle from "./components/ThemeToggle";
+
+const LS_TASKS = "todo.tasks.v1";
 
 export default function App() {
-  const [tasks, setTasks] = useState([]);
-  const [filter, setFilter] = useState("all");
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const raw = localStorage.getItem(LS_TASKS);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // Save to localStorage
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
   }, [tasks]);
 
-  // Load from localStorage
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("tasks")) || [];
-    setTasks(saved);
-  }, []);
+  const addTask = (payload) => {
+    const newTask = {
+      id: Date.now().toString(),
+      text: payload.text,
+      completed: false,
+      priority: payload.priority || "medium",
+      due: payload.due || null,
+      subtasks: payload.subtasks || [],
+      createdAt: Date.now(),
+      startedAt: null,
+      completedAt: null,
+    };
+    setTasks((s) => [newTask, ...s]);
+  };
 
-  const addTask = (text) => {
-    setTasks([...tasks, { id: Date.now(), text, completed: false }]);
+  const editTask = (id, patch) => {
+    setTasks((s) => s.map(t => t.id === id ? { ...t, ...patch } : t));
   };
 
   const deleteTask = (id) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+    setTasks((s) => s.filter(t => t.id !== id));
   };
 
   const toggleComplete = (id) => {
-    setTasks(
-      tasks.map((t) =>
-        t.id === id ? { ...t, completed: !t.completed } : t
-      )
+    setTasks((s) =>
+      s.map(t => {
+        if (t.id !== id) return t;
+        const now = Date.now();
+        const completed = !t.completed;
+        return {
+          ...t,
+          completed,
+          completedAt: completed ? now : null,
+          startedAt: !t.startedAt && !completed ? now : t.startedAt,
+        };
+      })
     );
   };
 
-  const editTask = (id, newText) => {
-    setTasks(
-      tasks.map((t) =>
-        t.id === id ? { ...t, text: newText } : t
-      )
-    );
+  const addSubtask = (id, text) => {
+    setTasks(s => s.map(t => t.id === id ? { ...t, subtasks: [...(t.subtasks||[]), { id: Date.now().toString(), text, done: false }] } : t));
   };
 
-  const filteredTasks = tasks.filter((t) => {
-    if (filter === "active") return !t.completed;
-    if (filter === "completed") return t.completed;
-    return true;
-  });
+  const toggleSubtask = (taskId, subId) => {
+    setTasks(s => s.map(t => {
+      if (t.id !== taskId) return t;
+      return { ...t, subtasks: t.subtasks.map(st => st.id === subId ? { ...st, done: !st.done } : st) };
+    }));
+  };
+
+  const removeSubtask = (taskId, subId) => {
+    setTasks(s => s.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.filter(st => st.id !== subId) } : t));
+  };
+
+  // derived: counts by due date (for busyness color)
+  const countsByDate = useMemo(() => {
+    const map = {};
+    tasks.forEach(t => {
+      if (!t.due) return;
+      map[t.due] = (map[t.due] || 0) + 1;
+    });
+    return map;
+  }, [tasks]);
 
   return (
-    <div className="app">
-      <h1>To-Do List</h1>
-      <ThemeToggle />
-      <TaskForm addTask={addTask} />
-      <FilterBar filter={filter} setFilter={setFilter} />
-      <TaskList
-        tasks={filteredTasks}
-        deleteTask={deleteTask}
-        toggleComplete={toggleComplete}
-        editTask={editTask}
-      />
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+        <Header />
+        <TaskForm addTask={addTask} />
+        <FilterBar tasks={tasks} countsByDate={countsByDate}
+                   onEdit={editTask} onDelete={deleteTask}
+                   onToggle={toggleComplete} addSubtask={addSubtask}
+                   toggleSubtask={toggleSubtask} removeSubtask={removeSubtask} />
+        <div className="mt-4">
+          <TaskList
+            tasks={tasks}
+            editTask={editTask}
+            deleteTask={deleteTask}
+            toggleComplete={toggleComplete}
+            addSubtask={addSubtask}
+            toggleSubtask={toggleSubtask}
+            removeSubtask={removeSubtask}
+            countsByDate={countsByDate}
+          />
+        </div>
+      </div>
     </div>
   );
 }
