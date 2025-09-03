@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Header from "./components/Header";
 import ThemeToggle from "./components/ThemeToggle";
-import TaskForm from "./components/TaskForm";
-import FilterBar from "./components/FilterBar";
-import TaskList from "./components/TaskList";
+import Sidebar from "./components/Sidebar";
+import AllTasksView from "./components/AllTasksView";
+import CalendarView from "./components/CalendarView";
+import ChecklistView from "./components/ChecklistView";
 
 const LS_TASKS = "todo.tasks.v1";
 const LS_THEME = "theme";
 
 export default function App() {
-  // --- State ---
   const [tasks, setTasks] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_TASKS);
@@ -26,8 +26,8 @@ export default function App() {
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState("created-desc");
+  const [currentView, setCurrentView] = useState("all"); // all | calendar | checklist
 
-  // --- Effects ---
   useEffect(() => {
     localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
   }, [tasks]);
@@ -54,50 +54,28 @@ export default function App() {
     setTasks(s => [newTask, ...s]);
   };
 
-  const editTask = (id, patch) => {
-    setTasks(s => s.map(t => t.id === id ? { ...t, ...patch } : t));
-  };
+  const editTask = (id, patch) => setTasks(s => s.map(t => t.id === id ? { ...t, ...patch } : t));
+  const deleteTask = (id) => setTasks(s => s.filter(t => t.id !== id));
+  const toggleComplete = (id) => setTasks(s =>
+    s.map(t => {
+      if (t.id !== id) return t;
+      const now = Date.now();
+      const completed = !t.completed;
+      return { ...t, completed, completedAt: completed ? now : null, startedAt: !t.startedAt && !completed ? now : t.startedAt };
+    })
+  );
 
-  const deleteTask = (id) => {
-    setTasks(s => s.filter(t => t.id !== id));
-  };
+  const addSubtask = (id, text) => setTasks(s =>
+    s.map(t => t.id === id ? { ...t, subtasks: [...(t.subtasks || []), { id: Date.now().toString(), text, done: false }] } : t)
+  );
 
-  const toggleComplete = (id) => {
-    setTasks(s =>
-      s.map(t => {
-        if (t.id !== id) return t;
-        const now = Date.now();
-        const completed = !t.completed;
-        return {
-          ...t,
-          completed,
-          completedAt: completed ? now : null,
-          startedAt: !t.startedAt && !completed ? now : t.startedAt,
-        };
-      })
-    );
-  };
+  const toggleSubtask = (taskId, subId) => setTasks(s =>
+    s.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.map(st => st.id === subId ? { ...st, done: !st.done } : st) } : t)
+  );
 
-  const addSubtask = (id, text) => {
-    setTasks(s =>
-      s.map(t => t.id === id ? { ...t, subtasks: [...(t.subtasks || []), { id: Date.now().toString(), text, done: false }] } : t)
-    );
-  };
-
-  const toggleSubtask = (taskId, subId) => {
-    setTasks(s =>
-      s.map(t => {
-        if (t.id !== taskId) return t;
-        return { ...t, subtasks: t.subtasks.map(st => st.id === subId ? { ...st, done: !st.done } : st) };
-      })
-    );
-  };
-
-  const removeSubtask = (taskId, subId) => {
-    setTasks(s =>
-      s.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.filter(st => st.id !== subId) } : t)
-    );
-  };
+  const removeSubtask = (taskId, subId) => setTasks(s =>
+    s.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.filter(st => st.id !== subId) } : t)
+  );
 
   // --- Derived counts by due date ---
   const countsByDate = useMemo(() => {
@@ -114,7 +92,7 @@ export default function App() {
     .filter(t => {
       if (filterStatus === "active") return !t.completed;
       if (filterStatus === "completed") return t.completed;
-      return true; // all
+      return true;
     })
     .sort((a, b) => {
       switch(sortBy) {
@@ -142,7 +120,7 @@ export default function App() {
       padding: "24px"
     }}>
       <div style={{
-        maxWidth: "768px",
+        maxWidth: "1024px",
         margin: "0 auto",
         backgroundColor: dark ? "#1f2937" : "#ffffff",
         borderRadius: "12px",
@@ -151,25 +129,59 @@ export default function App() {
       }}>
         <Header dark={dark} />
         <ThemeToggle dark={dark} setDark={setDark} />
-        <TaskForm addTask={addTask} />
-        <FilterBar
-          tasks={tasks}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          dark={dark}
-        />
-        <TaskList
-          tasks={visibleTasks}
-          editTask={editTask}
-          deleteTask={deleteTask}
-          toggleComplete={toggleComplete}
-          addSubtask={addSubtask}
-          toggleSubtask={toggleSubtask}
-          removeSubtask={removeSubtask}
-          dark={dark}
-        />
+
+        {/* --- Flex layout: Sidebar + Main content --- */}
+        <div style={{ display: "flex", gap: "24px" }}>
+          {/* Sidebar */}
+          <Sidebar currentView={currentView} setCurrentView={setCurrentView} dark={dark} />
+
+          {/* Main content: render based on selected view */}
+          <div style={{ flex: 1 }}>
+            {currentView === "all" && (
+              <AllTasksView
+                tasks={tasks}
+                visibleTasks={visibleTasks}
+                editTask={editTask}
+                deleteTask={deleteTask}
+                toggleComplete={toggleComplete}
+                addSubtask={addSubtask}
+                toggleSubtask={toggleSubtask}
+                removeSubtask={removeSubtask}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                dark={dark}
+                countsByDate={countsByDate}
+              />
+            )}
+
+            {currentView === "calendar" && (
+              <CalendarView
+                tasks={tasks}
+                countsByDate={countsByDate}
+                dark={dark}
+                editTask={editTask}
+                deleteTask={deleteTask}
+                toggleComplete={toggleComplete}
+                addSubtask={addSubtask}
+                toggleSubtask={toggleSubtask}
+                removeSubtask={removeSubtask}
+              />
+            )}
+
+            {currentView === "checklist" && (
+              <ChecklistView
+                tasks={tasks}
+                dark={dark}
+                editTask={editTask}
+                toggleSubtask={toggleSubtask}
+                addSubtask={addSubtask}
+                removeSubtask={removeSubtask}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
